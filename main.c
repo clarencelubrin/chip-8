@@ -14,7 +14,7 @@
     - 8-bit delay timer, decremented at 60Hz until reaches to 0
     - 8-bit sound timer, gives off beeping sound as long as it's not 0
     - 16 8-bit general purpose variable registers numbered 0 to F hexadecimals (V0-VF)
-        -   VF is the flag register
+        - VF is the flag register
  */
 
 #ifndef LIBRARY_H
