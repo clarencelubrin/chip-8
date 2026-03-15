@@ -6,7 +6,9 @@
     #include <stdbool.h>
     #include <windows.h>
 #endif
-#pragma comment(lib, "user32.lib")
+
+#include <SDL3/SDL.h>
+
 /*
     Keypad
     - 16 keys labeled 0 to F, arranged in a 4x4 grid
@@ -19,10 +21,11 @@
 extern uint8_t KEYPAD[16];
 
 void KEYPAD_UPDATE(uint8_t key, bool pressed);
-void KEYPAD_LISTEN();
+void KEYPAD_LISTEN(SDL_Event *event);
 void PRINT_KEYPAD();
-uint8_t IS_ANY_PRESSED();
 
+int IS_ANY_PRESSED();
+int MAP_SDL_KEY_TO_CHIP8(SDL_Scancode scancode);
 
 
 #endif

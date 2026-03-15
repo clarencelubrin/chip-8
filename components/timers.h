@@ -8,6 +8,12 @@
     #include <windows.h>
 #endif
 
+#include <SDL3/SDL.h>
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
+
 /*
     Timers
     - Delay timer
@@ -22,5 +28,8 @@ extern uint8_t R_SOUND_TIMER;
 
 void DELAY_TIMER_CYCLE();
 void SOUND_TIMER_CYCLE();
+
+int INIT_AUDIO();
+void CLEANUP_AUDIO();
 
 #endif

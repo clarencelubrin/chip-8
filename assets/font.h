@@ -6,22 +6,25 @@
     #include <stdint.h>
 #endif
 
-#include "memory.h"
+#include "../components/memory.h"
 
 /*
     Font
     - Characters are 4px by 5px
     - drawn just like regular sprites
-    - store in 0x050 – 0x09F
+    - store in 0x050 – 0x0B3 (fonts)
+    - store in 0x0B4 - 0x1FF (big fonts)
 */
 
 extern const uint8_t fonts[80];
+extern const uint8_t big_fonts[160];
+
 #define FONT_ADDRESS 0x050
 #define FONT_BYTE_PER_DIGIT 5
 
-#define LOAD_FONTS()                            \
-    for(int i=0; i<80; i++) {                   \
-        MEMORY[i + FONT_ADDRESS] = fonts[i];    \
-    }
+#define BIG_FONT_ADDRESS 0x0B4
+#define BIG_FONT_BYTE_PER_DIGIT 10
+
+void LOAD_FONTS();                                          
     
 #endif

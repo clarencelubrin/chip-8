@@ -23,13 +23,9 @@
     #include <stdbool.h>
     #include <stdlib.h>
     #include <stdint.h>
-#endif
 
-#define WINDOWS     // USING WINDOWS
-
-#ifdef WINDOWS
-    #include <conio.h>
-    #include <windows.h>
+    #include <SDL3/SDL.h>
+    #include <SDL3/SDL_main.h>
 #endif
 
 #include "components/cpu.h"
@@ -37,88 +33,69 @@
 #include "components/memory.h"
 #include "components/register.h"
 #include "components/timers.h"
+#include "components/keypad.h"
 
 #include "assets/font.h"
 
-unsigned __stdcall CPU_THREAD_WORKER(void* arg);
-unsigned __stdcall DISPLAY_THREAD_WORKER(void* arg);
-unsigned __stdcall KEYPAD_THREAD_WORKER(void* arg);
+int main(int argc, char *argv[]) {
+    srand(time(NULL)); // Seed with current time
 
-void main(int argc, char** argv) {
-    SetConsoleOutputCP(437); // Sets terminal to the old DOS character set
-    INIT_DISPLAY();
-    LOAD_FONTS();
-
-/* 
-    ============================================================================= 
-        Load ROM from the argv[1] to the MEMORY starting at ROM_STARTING_LOC
-*/
-
-    FILE *fp = fopen(argv[1], "rb");
-
-    // Get the file length
-    fseek(fp, 0, SEEK_END);
-    size_t fileLen = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-
-    fread(&(MEMORY[ROM_STARTING_LOC]), sizeof(uint8_t), fileLen, fp);
-/* 
-    ============================================================================= 
-*/
-    int CPU_ID = 1, DISPLAY_ID = 2, KEYPAD_ID = 3;
-    // uintptr_t CPU_TH = _beginthreadex(NULL, 0, CPU_THREAD_WORKER, &CPU_ID, 0, NULL);
-    uintptr_t DISPLAY_TH = _beginthreadex(NULL, 0, DISPLAY_THREAD_WORKER, &DISPLAY_ID, 0, NULL);
-    // uintptr_t KEYPAD_TH = _beginthreadex(NULL, 0, KEYPAD_THREAD_WORKER, &KEYPAD_ID, 0, NULL);
-
-    // WaitForSingleObject((HANDLE)CPU_TH, INFINITE);
-    WaitForSingleObject((HANDLE)DISPLAY_TH, INFINITE);
-    // WaitForSingleObject((HANDLE)KEYPAD_TH, INFINITE);
-
-    // CloseHandle((HANDLE)CPU_TH);
-    CloseHandle((HANDLE)DISPLAY_TH);
-    // CloseHandle((HANDLE)KEYPAD_TH);
-}
-
-unsigned __stdcall CPU_THREAD_WORKER(void *arg){
-    int id = *(int*)arg;
-
-    RPC = ROM_STARTING_LOC;  // Starting position
-    while(RPC != 0xffe) {
-        // CYCLE();
+    if (SDL_INIT_GRAPHICS() != 0) {
+        printf("Failed to initialize graphics!\n");
+        return -1;
     }
-    return 0;
-}
+    if (argc < 2) {
+        printf("Error: No ROM file provided.\n");
+        printf("Usage: chip8_emulator.exe <path_to_rom>\n");
+        return -1;
+    }
 
-#define INSTRUCTIONS_PER_FRAME 10
+    INIT_DISPLAY();
+    if (INIT_AUDIO() != 0) {
+        printf("Failed to initialize audio!\n");
+        return -1;
+    }
+    LOAD_FONTS();
+    LOAD_ROM(argv[1]);       // Load ROM to memory
 
-unsigned __stdcall DISPLAY_THREAD_WORKER(void *arg){
-    int id = *(int*)arg;
     RPC = ROM_STARTING_LOC;  // Starting position
-
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    bool running = true;
     
-    while(RPC != 0xffe) {
-        KEYPAD_LISTEN();
+    SDL_Event event;
 
-        for (int i = 0; i < INSTRUCTIONS_PER_FRAME; i++) {
-            CPU_CYCLE(); 
+    uint64_t last_timer_time = SDL_GetTicks(); 
+
+    while (running) {
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_EVENT_QUIT) {
+                running = false;
+            }
+            KEYPAD_LISTEN(&event);
         }
 
-        DELAY_TIMER_CYCLE();  // Decrement timer until 0
-        SOUND_TIMER_CYCLE();  // Beep and decrement until 0
+        for (int i = 0; i < 20; i++) {
+            if(EXIT_FLAG) return 0;
+            CPU_CYCLE();
+        }
 
-        RENDER(hConsole);
+        /* Enforce 60fps based on ticks (VSYNC) */
+        uint64_t current_time = SDL_GetTicks();
+        if (current_time - last_timer_time >= 16) { // 1000ms / 60 ≈ 16.6ms
+            DELAY_TIMER_CYCLE();
+            SOUND_TIMER_CYCLE();
+            last_timer_time = current_time;
+        }
 
-        Sleep(16); // 1000ms / 60 = 16.6ms
+        SDL_RENDER(RDRAW_FLAG); 
+        RDRAW_FLAG = false;
     }
+
+    // Cleanup
+    CLEANUP_AUDIO();
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 
     return 0;
 }
 
-unsigned __stdcall KEYPAD_THREAD_WORKER(void *arg){
-    int id = *(int*)arg;
-    int c = -1;
-    while(RPC != 0xffe) {
-    }
-    return 0;
-}
