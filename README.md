@@ -1,6 +1,6 @@
 # CHIP-8 Emulator in C
 
-This is a CHIP-8 Emulator with SuperChip support. It is backwards compatible with the original CHIP-8 instruction set. It uses SDL2 for the graphics library.
+This is a CHIP-8 Emulator with SuperChip support. It is backwards compatible with the original CHIP-8 instruction set. It uses SDL3 for the graphics library.
 
 ## Specifications
 - Memory: 4KB RAM
