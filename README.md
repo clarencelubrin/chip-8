@@ -7,7 +7,7 @@ This is a CHIP-8 Emulator with SuperChip support. It is backwards compatible wit
 - Display: 64x32 pixels monochrome
 - Supports high-res mode (128x64) pixel graphics mode
 - Program Counter (PC)
-- 16-bit index register (IR) which is used to point at locations in memory
+- 16-bit index register which is used to point at locations in memory
 - Stack: 16-bit addresses, used to call subroutines/functions and return from them
 - 8-bit delay timer, decremented at 60Hz until reaches to 0
 - 8-bit sound timer, gives off beeping sound as long as it's not 0
