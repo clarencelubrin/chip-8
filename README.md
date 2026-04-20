@@ -31,6 +31,6 @@ cd ./build
 
 ## Citations
 
-https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#what-next
-https://johnearnest.github.io/Octo/docs/SuperChip.html
-https://chip8.gulrak.net/
+- Langhoff, T. V. I. (2020, July 20). Guide to making a CHIP-8 emulator. Tobias V. I. Langhoff. https://tobiasvl.github.io/blog/write-a-chip-8-emulator
+- Earnest, J. (n.d.). Mastering SuperChip. Octo. https://johnearnest.github.io/Octo/docs/SuperChip.html
+- Schümann, S. (n.d.). CHIP-8 variant opcode table. CHIP-8 Archive. https://chip8.gulrak.net/
