@@ -14,6 +14,21 @@ This is a CHIP-8 Emulator with SuperChip support. It is backwards compatible wit
 - 16 8-bit general purpose variable registers numbered 0 to F hexadecimals (V0-VF)
 - VF is the flag register
 
+## Build
+
+It is required to have CL installed in your Windows machine in order to build from source.
+
+Build from source.
+```
+./build.bat
+```
+
+Run the executable.
+```
+cd ./build
+./chip8.exe <ROM_FILE>
+```
+
 ## Citations
 
 https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#what-next
