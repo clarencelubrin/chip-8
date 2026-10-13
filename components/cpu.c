@@ -1,5 +1,11 @@
 #include "cpu.h"
 
+/* Macros to simplify matching and decoding instructions */
+#define CHECK_NNN(a, b, c) (n2 == a && n3 == b && n4 == c)      // Match the lower three nibble
+#define CHECK_NN(b, c) (n3 == b && n4 == c)                     // Match the lower two nibble
+#define NN()  (n3 << 4 | n4)                                    // Get the lower two nibble
+#define NNN() (n2 << 8 | n3 << 4 | n4)                          // Get the lower three nibble
+
 void CPU_CYCLE() {
     /* 
         FETCH 
@@ -29,11 +35,6 @@ void CPU_CYCLE() {
     /* 
         EXECUTE 
     */
-#define CHECK_NNN(a, b, c) (n2 == a && n3 == b && n4 == c)
-#define CHECK_NN(b, c) (n3 == b && n4 == c)
-#define NN()  (n3 << 4 | n4)
-#define NNN() (n2 << 8 | n3 << 4 | n4)
-
     switch(n1) {
         case 0x00:
             if(CHECK_NNN(0x0, 0xE, 0x0)) {         

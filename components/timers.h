@@ -5,7 +5,7 @@
 #define LIBRARY_H
     #include <stdio.h>
     #include <stdint.h>
-    #include <windows.h>
+    // #include <windows.h>
 #endif
 
 #include <SDL3/SDL.h>

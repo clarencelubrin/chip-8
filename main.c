@@ -23,7 +23,8 @@
     #include <stdbool.h>
     #include <stdlib.h>
     #include <stdint.h>
-
+    #include <time.h>
+    
     #include <SDL3/SDL.h>
     #include <SDL3/SDL_main.h>
 #endif
@@ -46,7 +47,7 @@ int main(int argc, char *argv[]) {
     }
     if (argc < 2) {
         printf("Error: No ROM file provided.\n");
-        printf("Usage: chip8_emulator.exe <path_to_rom>\n");
+        printf("Usage: ./chip8_emulator <path_to_rom>\n");
         return -1;
     }
 

@@ -1,6 +1,6 @@
 # CHIP-8 Emulator in C
 
-This is a CHIP-8 Emulator with SuperChip support. It is backwards compatible with the original CHIP-8 instruction set. It uses SDL3 for the graphics library.
+This is a CHIP-8 Emulator with SuperChip (Modern) support. It is backwards compatible with the original CHIP-8 instruction set. It uses SDL3 for the graphics library.
 
 ## Specifications
 - Memory: 4KB RAM
@@ -18,15 +18,25 @@ This is a CHIP-8 Emulator with SuperChip support. It is backwards compatible wit
 
 It is required to have CL installed in your Windows machine in order to build from source.
 
-Build from source.
+Install the prerequisites and dependencies.
 ```
-./build.bat
+make setup
+```
+
+Build from the source.
+```
+make build
 ```
 
 Run the executable.
 ```
 cd ./build
-./chip8.exe <ROM_FILE>
+./chip8_emulator <ROM_FILE>
+```
+
+Clean the build file (if you want to rebuild from source).
+```
+make clean
 ```
 
 ## Citations

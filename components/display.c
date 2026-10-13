@@ -1,9 +1,9 @@
 #include "display.h"
 
-bool DISPLAY_LOW_RES[SCREEN_HEIGHT_LOW_RES][SCREEN_WIDTH_LOW_RES];
-bool DISPLAY_HIGH_RES[SCREEN_HEIGHT_HIGH_RES][SCREEN_WIDTH_HIGH_RES];
+bool DISPLAY_LOW_RES[SCREEN_HEIGHT_LOW_RES][SCREEN_WIDTH_LOW_RES];      // Display buffer for low resolution mode (64x32)
+bool DISPLAY_HIGH_RES[SCREEN_HEIGHT_HIGH_RES][SCREEN_WIDTH_HIGH_RES];   // Display buffer for high resolution mode (128x64)
 
-res_mode_t RES_MODE = LOW_RES_MODE;
+res_mode_t RES_MODE = LOW_RES_MODE;                                     // What mode the display is currently in (low or high resolution)
 
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
