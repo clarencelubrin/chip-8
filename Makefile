@@ -1,9 +1,13 @@
 # Chip 8 makefile
-build: main.c
+SOURCES := main.c $(wildcard components/*.c) $(wildcard assets/*.c)
+HEADERS := $(wildcard components/*.h) $(wildcard assets/*.h)
+
+.PHONY: build clean setup
+
+build: $(SOURCES) $(HEADERS)
 	echo "Building Chip 8 emulator."
 	mkdir -p build
-	gcc main.c components/*.c assets/*.c -o build/chip8_emulator -I/usr/local/include -L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,--enable-new-dtags -lSDL3 -lm
-	cd ..
+	gcc $(SOURCES) -o build/chip8_emulator -I/usr/local/include -L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,--enable-new-dtags -lSDL3 -lm
 
 clean:
 	rm -r build

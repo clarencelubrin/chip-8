@@ -73,13 +73,15 @@ int SDL_INIT_GRAPHICS() {
                                SDL_WINDOW_RESIZABLE);
     if (!window) {
         SDL_Log("Window creation failed: %s", SDL_GetError());
-        return 1;
+        SDL_CLEANUP_GRAPHICS();
+        return -1;
     }
     
     renderer = SDL_CreateRenderer(window, NULL);
     if (!renderer) {
         SDL_Log("Renderer creation failed: %s", SDL_GetError());
-        return 1;
+        SDL_CLEANUP_GRAPHICS();
+        return -1;
     }
 
     SDL_SetRenderVSync(renderer, 1);
@@ -90,7 +92,8 @@ int SDL_INIT_GRAPHICS() {
                                 SDL_TEXTUREACCESS_STREAMING, 64, 32);
     if (!texture) {
         SDL_Log("Texture creation failed: %s", SDL_GetError());
-        return 1;
+        SDL_CLEANUP_GRAPHICS();
+        return -1;
     }
 
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
@@ -98,30 +101,45 @@ int SDL_INIT_GRAPHICS() {
     return 0;
 }
 
-void SDL_TOGGLE_RESOLUTION(res_mode_t new_mode) {
-    RES_MODE = new_mode;
+void SDL_CLEANUP_GRAPHICS() {
+    if (texture) {
+        SDL_DestroyTexture(texture);
+        texture = NULL;
+    }
+    if (renderer) {
+        SDL_DestroyRenderer(renderer);
+        renderer = NULL;
+    }
+    if (window) {
+        SDL_DestroyWindow(window);
+        window = NULL;
+    }
+}
 
-    INIT_DISPLAY();
+bool SDL_TOGGLE_RESOLUTION(res_mode_t new_mode) {
+    int new_width = (new_mode == LOW_RES_MODE) ? SCREEN_WIDTH_LOW_RES : SCREEN_WIDTH_HIGH_RES;
+    int new_height = (new_mode == LOW_RES_MODE) ? SCREEN_HEIGHT_LOW_RES : SCREEN_HEIGHT_HIGH_RES;
+    SDL_Texture *new_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
+                                                 SDL_TEXTUREACCESS_STREAMING,
+                                                 new_width, new_height);
+    if (!new_texture) {
+        SDL_Log("Texture recreation failed: %s", SDL_GetError());
+        return false;
+    }
 
     if (texture != NULL) {
         SDL_DestroyTexture(texture);
     }
-
-    int new_width = (RES_MODE == LOW_RES_MODE) ? SCREEN_WIDTH_LOW_RES : SCREEN_WIDTH_HIGH_RES;
-    int new_height = (RES_MODE == LOW_RES_MODE) ? SCREEN_HEIGHT_LOW_RES : SCREEN_HEIGHT_HIGH_RES;
-
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, 
-                                SDL_TEXTUREACCESS_STREAMING, new_width, new_height);
-    if (!texture) {
-        SDL_Log("Texture recreation failed: %s", SDL_GetError());
-        return;
-    }
+    texture = new_texture;
+    RES_MODE = new_mode;
+    INIT_DISPLAY();
     
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
-
-    SDL_SetRenderLogicalPresentation(renderer, new_width, new_height, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
     
+    SDL_SetRenderLogicalPresentation(renderer, new_width, new_height, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+
+    return true;
 }
 
 void SDL_RENDER(bool RDRAW_FLAG) {

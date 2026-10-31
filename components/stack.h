@@ -5,6 +5,7 @@
 #define STDINT_H
     #include <stdint.h>
     #include <stddef.h>
+    #include <stdbool.h>
 #endif
 
 /*
@@ -18,7 +19,7 @@
 extern uint16_t STACK[STACK_SIZE];
 extern size_t TOS;
 
-#define S_PUSH(E) if(TOS < STACK_SIZE) {STACK[TOS++] = (E);}
-#define S_POP() ((TOS == 0) ? 0 : (STACK[--TOS]))
+bool S_PUSH(uint16_t address);
+bool S_POP(uint16_t *address);
 
 #endif

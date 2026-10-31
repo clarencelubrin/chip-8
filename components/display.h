@@ -48,8 +48,9 @@ extern SDL_Texture* texture;
 void INIT_DISPLAY();
 
 int SDL_INIT_GRAPHICS();
+void SDL_CLEANUP_GRAPHICS();
 void SDL_UPDATE_PIXEL_BUFFER();
 void SDL_RENDER(bool RDRAW_FLAG);
-void SDL_TOGGLE_RESOLUTION(res_mode_t new_mode);
+bool SDL_TOGGLE_RESOLUTION(res_mode_t new_mode);
 
 #endif

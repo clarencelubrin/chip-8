@@ -6,6 +6,11 @@
 #define NN()  (n3 << 4 | n4)                                    // Get the lower two nibble
 #define NNN() (n2 << 8 | n3 << 4 | n4)                          // Get the lower three nibble
 
+static bool MEMORY_RANGE_VALID(uint16_t address, size_t length) {
+    return (size_t)address <= sizeof(MEMORY) &&
+           length <= sizeof(MEMORY) - (size_t)address;
+}
+
 void CPU_CYCLE() {
     /* 
         FETCH 
@@ -13,6 +18,12 @@ void CPU_CYCLE() {
         - Instruction is 2 bytes
         - Read two successibe byte from the memory and combine them into one 16-bit instruction
     */
+    if (!MEMORY_RANGE_VALID(RPC, 2)) {
+        fprintf(stderr, "Error: instruction fetch outside memory at 0x%04X\n", RPC);
+        EXIT_FLAG = true;
+        return;
+    }
+
     uint16_t INSTR = (MEMORY[RPC] << 8) | MEMORY[RPC+1];
     RPC = RPC + 2;  // inc RPC, 2
     /* 
@@ -50,14 +61,19 @@ void CPU_CYCLE() {
                 00EE
                 - Pop the value from the stack to the PC register.
             */
-                RPC = S_POP();
+                uint16_t return_address;
+                if (!S_POP(&return_address)) {
+                    EXIT_FLAG = true;
+                    break;
+                }
+                RPC = return_address;
             }
             else if(CHECK_NNN(0x0, 0xF, 0xF)) {     
             /*
                 00FF 
                 - enable HIGH_RES_MODE graphics
             */
-                SDL_TOGGLE_RESOLUTION(HIGH_RES_MODE);
+                if (!SDL_TOGGLE_RESOLUTION(HIGH_RES_MODE)) EXIT_FLAG = true;
                 RDRAW_FLAG = true;  // New texture has undefined contents until uploaded
             }
             else if(CHECK_NNN(0x0, 0xF, 0xE)) {    
@@ -65,7 +81,7 @@ void CPU_CYCLE() {
                 00FE 
                 - disable HIGH_RES_MODE/ switch to LOW_RES_MODE
             */
-                SDL_TOGGLE_RESOLUTION(LOW_RES_MODE);
+                if (!SDL_TOGGLE_RESOLUTION(LOW_RES_MODE)) EXIT_FLAG = true;
                 RDRAW_FLAG = true;  // New texture has undefined contents until uploaded
             }
             else if(n2 == 0x0 && n3 == 0xC) {     
@@ -148,7 +164,10 @@ void CPU_CYCLE() {
             - Set the NNN to the RPC
         */
         case 0x02:
-            S_PUSH(RPC);    
+            if (!S_PUSH(RPC)) {
+                EXIT_FLAG = true;
+                break;
+            }
             RPC = NNN();    
             break;
         /*
@@ -310,6 +329,13 @@ void CPU_CYCLE() {
 
                 int sprite_width  = (RES_MODE == LOW_RES_MODE) ? 8 : 16;
                 int bytes_per_row = (RES_MODE == LOW_RES_MODE) ? 1 : 2;
+                size_t sprite_length = (size_t)16 * (size_t)bytes_per_row;
+
+                if (!MEMORY_RANGE_VALID(RIDX, sprite_length)) {
+                    fprintf(stderr, "Error: sprite read outside memory at 0x%04X\n", RIDX);
+                    EXIT_FLAG = true;
+                    break;
+                }
 
                 for (uint8_t i = 0; i < 16; i++) {
 #ifdef CLIPPING_Q
@@ -359,6 +385,12 @@ void CPU_CYCLE() {
             */
 
                 REGISTERS[RFLAG] = 0;
+                if (!MEMORY_RANGE_VALID(RIDX, n4)) {
+                    fprintf(stderr, "Error: sprite read outside memory at 0x%04X\n", RIDX);
+                    EXIT_FLAG = true;
+                    break;
+                }
+
                 uint8_t startX = REGISTERS[n2] % SCREEN_WIDTH;
                 uint8_t startY = REGISTERS[n3] % SCREEN_HEIGHT;
 
@@ -495,6 +527,12 @@ void CPU_CYCLE() {
                 - Store in MEMORY[RIDX]           
             */
 
+                if (!MEMORY_RANGE_VALID(RIDX, 3)) {
+                    fprintf(stderr, "Error: BCD write outside memory at 0x%04X\n", RIDX);
+                    EXIT_FLAG = true;
+                    break;
+                }
+
                 MEMORY[RIDX] = REGISTERS[n2] / 100;
                 MEMORY[RIDX+1] = (REGISTERS[n2] / 10) % 10;
                 MEMORY[RIDX+2] = REGISTERS[n2] % 10;
@@ -502,6 +540,13 @@ void CPU_CYCLE() {
             /*
                 FX55
             */
+                size_t transfer_length = (size_t)n2 + 1;
+                if (!MEMORY_RANGE_VALID(RIDX, transfer_length)) {
+                    fprintf(stderr, "Error: register store outside memory at 0x%04X\n", RIDX);
+                    EXIT_FLAG = true;
+                    break;
+                }
+
                 for(int i=0; i<=n2; i++) {
                     MEMORY[RIDX+i] = REGISTERS[i];
                 }
@@ -512,6 +557,13 @@ void CPU_CYCLE() {
             /*
                 FX65
             */  
+                size_t transfer_length = (size_t)n2 + 1;
+                if (!MEMORY_RANGE_VALID(RIDX, transfer_length)) {
+                    fprintf(stderr, "Error: register load outside memory at 0x%04X\n", RIDX);
+                    EXIT_FLAG = true;
+                    break;
+                }
+
                 for(int i=0; i<=n2; i++) {
                     REGISTERS[i] = MEMORY[RIDX+i];
                 }

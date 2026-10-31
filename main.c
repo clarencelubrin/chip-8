@@ -43,6 +43,7 @@ int main(int argc, char *argv[]) {
 
     if (SDL_INIT_GRAPHICS() != 0) {
         printf("Failed to initialize graphics!\n");
+        SDL_Quit();
         return -1;
     }
     if (argc < 2) {
@@ -55,10 +56,15 @@ int main(int argc, char *argv[]) {
     RDRAW_FLAG = true;       // Upload the initial (blank) display to the texture
     if (INIT_AUDIO() != 0) {
         printf("Failed to initialize audio!\n");
+        SDL_CLEANUP_GRAPHICS();
+        SDL_Quit();
         return -1;
     }
     LOAD_FONTS();
     if (LOAD_ROM(argv[1]) != 0) {   // Load ROM to memory
+        CLEANUP_AUDIO();
+        SDL_CLEANUP_GRAPHICS();
+        SDL_Quit();
         return -1;
     }       
 
@@ -110,10 +116,8 @@ int main(int argc, char *argv[]) {
 
     // Cleanup
     CLEANUP_AUDIO();
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    SDL_CLEANUP_GRAPHICS();
     SDL_Quit();
 
     return 0;
 }
-

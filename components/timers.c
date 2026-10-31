@@ -33,7 +33,6 @@ int INIT_AUDIO() {
     );
     
     if (!audio_stream) {
-        SDL_Quit();
         return 1;
     }
     
@@ -53,6 +52,11 @@ void SOUND_TIMER_CYCLE() {
         int samples_to_add = bytes_to_add / sizeof(float);
         
         float* buffer = (float*)malloc(samples_to_add * sizeof(float));
+        if (!buffer) {
+            SDL_Log("Audio buffer allocation failed");
+            return;
+        }
+
         float frequency = 440.0f;
         
         for (int i = 0; i < samples_to_add; i++) {
@@ -80,7 +84,9 @@ void SOUND_TIMER_CYCLE() {
             }
         }
         
-        SDL_PutAudioStreamData(audio_stream, buffer, samples_to_add * sizeof(float));
+        if (!SDL_PutAudioStreamData(audio_stream, buffer, samples_to_add * sizeof(float))) {
+            SDL_Log("Audio stream write failed: %s", SDL_GetError());
+        }
         free(buffer);
     }
 
