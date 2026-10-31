@@ -23,6 +23,7 @@
  */
 extern uint8_t R_DELAY_TIMER;
 extern uint8_t R_SOUND_TIMER;
+extern bool VBLANK_FLAG;   /* set by the 60 Hz tick, cleared by DXYN */
 
 #define sleep_ms(ms) (Sleep((DWORD)(ms)));
 

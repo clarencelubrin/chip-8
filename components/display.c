@@ -11,7 +11,26 @@ SDL_Texture* texture = NULL;
 
 uint32_t pixelBuffer[128 * 64];
 
+/*
+    Colors are packed according to SDL_PIXELFORMAT_RGBA32, which is
+    endianness-dependent (ABGR8888 on little-endian, RGBA8888 on big-endian).
+    Let SDL build the correct 32-bit values instead of hardcoding them.
+*/
+static uint32_t PIXEL_ON  = 0xFFFFFFFF;
+static uint32_t PIXEL_OFF = 0xFF000000;
+static bool PIXEL_COLORS_READY = false;
+
+static void INIT_PIXEL_COLORS() {
+    const SDL_PixelFormatDetails *format = SDL_GetPixelFormatDetails(SDL_PIXELFORMAT_RGBA32);
+    if (format) {
+        PIXEL_ON  = SDL_MapRGBA(format, NULL, 255, 255, 255, 255); // opaque white
+        PIXEL_OFF = SDL_MapRGBA(format, NULL, 0, 0, 0, 255);       // opaque black
+    }
+    PIXEL_COLORS_READY = true;
+}
+
 void INIT_DISPLAY() {
+    if (!PIXEL_COLORS_READY) INIT_PIXEL_COLORS();
     for (int y = 0; y < SCREEN_HEIGHT_LOW_RES; y++) {
         for (int x = 0; x < SCREEN_WIDTH_LOW_RES; x++) {
             DISPLAY_LOW_RES[y][x] = false; 
@@ -25,16 +44,17 @@ void INIT_DISPLAY() {
 }
 
 void SDL_UPDATE_PIXEL_BUFFER() {
+    if (!PIXEL_COLORS_READY) INIT_PIXEL_COLORS();
     if(RES_MODE == LOW_RES_MODE) {
         for (int y = 0; y < 32; y++) {
             for (int x = 0; x < 64; x++) {
-                pixelBuffer[(y * 64) + x] = DISPLAY_LOW_RES[y][x] ? 0xFFFFFFFF : 0x000000FF;
+                pixelBuffer[(y * 64) + x] = DISPLAY_LOW_RES[y][x] ? PIXEL_ON : PIXEL_OFF;
             }
         }
     } else {
         for (int y = 0; y < 64; y++) {
             for (int x = 0; x < 128; x++) {
-                pixelBuffer[(y * 128) + x] = DISPLAY_HIGH_RES[y][x] ? 0xFFFFFFFF : 0x000000FF;
+                pixelBuffer[(y * 128) + x] = DISPLAY_HIGH_RES[y][x] ? PIXEL_ON : PIXEL_OFF;
             }
         }
     }
@@ -74,6 +94,7 @@ int SDL_INIT_GRAPHICS() {
     }
 
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
     return 0;
 }
 
@@ -91,8 +112,13 @@ void SDL_TOGGLE_RESOLUTION(res_mode_t new_mode) {
 
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, 
                                 SDL_TEXTUREACCESS_STREAMING, new_width, new_height);
+    if (!texture) {
+        SDL_Log("Texture recreation failed: %s", SDL_GetError());
+        return;
+    }
     
     SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
 
     SDL_SetRenderLogicalPresentation(renderer, new_width, new_height, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
     

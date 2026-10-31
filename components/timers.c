@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+bool VBLANK_FLAG = false;
 uint8_t R_DELAY_TIMER = 0;
 uint8_t R_SOUND_TIMER = 0;
 

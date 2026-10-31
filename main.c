@@ -52,42 +52,59 @@ int main(int argc, char *argv[]) {
     }
 
     INIT_DISPLAY();
+    RDRAW_FLAG = true;       // Upload the initial (blank) display to the texture
     if (INIT_AUDIO() != 0) {
         printf("Failed to initialize audio!\n");
         return -1;
     }
     LOAD_FONTS();
-    LOAD_ROM(argv[1]);       // Load ROM to memory
+    if (LOAD_ROM(argv[1]) != 0) {   // Load ROM to memory
+        return -1;
+    }       
 
     RPC = ROM_STARTING_LOC;  // Starting position
     bool running = true;
     
     SDL_Event event;
 
-    uint64_t last_timer_time = SDL_GetTicks(); 
-
+    uint64_t last_time   = SDL_GetTicksNS();
+    uint64_t cpu_accum   = 0;   /* leftover nanoseconds of CPU time owed */
+    uint64_t timer_accum = 0;   /* leftover nanoseconds of timer time owed */
+    
     while (running) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) {
-                running = false;
-            }
+            if (event.type == SDL_EVENT_QUIT) running = false;
             KEYPAD_LISTEN(&event);
         }
 
-        for (int i = 0; i < 20; i++) {
-            if(EXIT_FLAG) return 0;
+        uint64_t now     = SDL_GetTicksNS();
+        uint64_t elapsed = now - last_time;
+        last_time = now;
+        if (elapsed > MAX_FRAME_NS) elapsed = MAX_FRAME_NS; /* avoid catch-up death spiral */
+
+        /* CPU: 700 instructions per second */
+        cpu_accum += elapsed;
+        uint64_t cycles = (cpu_accum * CPU_HZ) / (uint64_t)SDL_NS_PER_SECOND;
+        cpu_accum -= (cycles * (uint64_t)SDL_NS_PER_SECOND) / CPU_HZ;
+
+        for (uint64_t i = 0; i < cycles; i++) {
+            if (EXIT_FLAG) { running = false; break; }
             CPU_CYCLE();
         }
+        if (!running) break;
 
-        /* Enforce 60fps based on ticks (VSYNC) */
-        uint64_t current_time = SDL_GetTicks();
-        if (current_time - last_timer_time >= 16) { // 1000ms / 60 ≈ 16.6ms
+        /* Timer of 60hz, independent of render rate */
+        timer_accum += elapsed;
+        uint64_t ticks = (timer_accum * TIMER_HZ) / (uint64_t)SDL_NS_PER_SECOND;
+        timer_accum -= (ticks * (uint64_t)SDL_NS_PER_SECOND) / TIMER_HZ;
+
+        for (uint64_t i = 0; i < ticks; i++) {
             DELAY_TIMER_CYCLE();
             SOUND_TIMER_CYCLE();
-            last_timer_time = current_time;
+            VBLANK_FLAG = true;
         }
 
-        SDL_RENDER(RDRAW_FLAG); 
+        SDL_RENDER(RDRAW_FLAG);
         RDRAW_FLAG = false;
     }
 

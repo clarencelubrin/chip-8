@@ -4,6 +4,7 @@
 #ifndef STDINT_H
 #define STDINT_H
     #include <stdint.h>
+    #include <stddef.h>
 #endif
 
 /*
@@ -13,8 +14,9 @@
     - 16 two-bytes entries
  */
 #define STACK_SIZE 16
-uint16_t STACK[STACK_SIZE];
-size_t TOS = 0;
+
+extern uint16_t STACK[STACK_SIZE];
+extern size_t TOS;
 
 #define S_PUSH(E) if(TOS < STACK_SIZE) {STACK[TOS++] = (E);}
 #define S_POP() ((TOS == 0) ? 0 : (STACK[--TOS]))

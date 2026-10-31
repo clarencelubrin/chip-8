@@ -43,6 +43,7 @@ void CPU_CYCLE() {
                 - Initialize display
             */
                 INIT_DISPLAY();
+                RDRAW_FLAG = true;  // The cleared display must be pushed to the texture
             }
             else if(CHECK_NNN(0x0, 0xE, 0xE)) {     
             /*
@@ -57,6 +58,7 @@ void CPU_CYCLE() {
                 - enable HIGH_RES_MODE graphics
             */
                 SDL_TOGGLE_RESOLUTION(HIGH_RES_MODE);
+                RDRAW_FLAG = true;  // New texture has undefined contents until uploaded
             }
             else if(CHECK_NNN(0x0, 0xF, 0xE)) {    
             /*
@@ -64,6 +66,7 @@ void CPU_CYCLE() {
                 - disable HIGH_RES_MODE/ switch to LOW_RES_MODE
             */
                 SDL_TOGGLE_RESOLUTION(LOW_RES_MODE);
+                RDRAW_FLAG = true;  // New texture has undefined contents until uploaded
             }
             else if(n2 == 0x0 && n3 == 0xC) {     
             /*
@@ -192,16 +195,25 @@ void CPU_CYCLE() {
                 8XY1
             */
                 REGISTERS[n2] |= REGISTERS[n3];
+#ifdef VFRESET_Q
+                REGISTERS[RFLAG] = 0;
+#endif
             } else if (n4 == 0x2) {   
             /*
                 8XY2
             */
                 REGISTERS[n2] &= REGISTERS[n3];
+#ifdef VFRESET_Q
+                REGISTERS[RFLAG] = 0;
+#endif
             } else if (n4 == 0x3) {
             /*
                 8XY3
             */
                 REGISTERS[n2] ^= REGISTERS[n3];
+#ifdef VFRESET_Q
+                REGISTERS[RFLAG] = 0;
+#endif
             } else if (n4 == 0x4) {  
             /*
                 8XY4
@@ -213,7 +225,6 @@ void CPU_CYCLE() {
             /*
                 8XY5
             */
-                uint16_t ans = REGISTERS[n2] - REGISTERS[n3];
                 uint8_t f = (REGISTERS[n2] >= REGISTERS[n3]) ? 1 : 0;
                 REGISTERS[n2] = (uint8_t)(REGISTERS[n2] - REGISTERS[n3]);
                 REGISTERS[RFLAG] = f;
@@ -221,8 +232,12 @@ void CPU_CYCLE() {
             /*
                 8XY6
             */
-                // REGISTERS[n3] = REGISTERS[n2];      // (Optional, or configurable) Set VX to the value of VY
-                uint8_t f = REGISTERS[n2] & 1;          // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
+#ifdef SHIFT_Q
+                uint8_t src = REGISTERS[n3];        /* original: shift VY into VX */
+#else
+                uint8_t src = REGISTERS[n2];        /* modern: shift VX in place */
+#endif
+                uint8_t f = src & 1;      // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
                 REGISTERS[n2] = REGISTERS[n2] >> 1; // Shift the value of VX one bit to the right (8XY6)
                 REGISTERS[RFLAG] = f;
             } else if (n4 == 0x7) {   
@@ -236,9 +251,13 @@ void CPU_CYCLE() {
             /*
                 8XYE
             */
-                // REGISTERS[n3] = REGISTERS[n2];      // (Optional, or configurable) Set VX to the value of VY
+#ifdef SHIFT_Q
+                uint8_t src = REGISTERS[n3];
+#else
+                uint8_t src = REGISTERS[n2];
+#endif
                 uint8_t f = (REGISTERS[n2] & 0x80) ? 1 : 0;   // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
-                REGISTERS[n2] = REGISTERS[n2] << 1; // Shift the value of VX one bit to the right left (8XYE)
+                REGISTERS[n2] = src << 1; // Shift the value of VX one bit to the right left (8XYE)
                 REGISTERS[RFLAG] = f;
             }
             break;
@@ -261,49 +280,62 @@ void CPU_CYCLE() {
             BXNN (jump with offset)
         */
         case 0x0B:
-            RPC = NNN() + REGISTERS[n2];
+#ifdef JUMP_Q
+            RPC = (NNN() + REGISTERS[0]) & 0x0FFF;   /* NNN + V0 */
+#else
+            RPC = (NNN() + REGISTERS[n2]) & 0x0FFF;    /* NNN + VX */
+#endif
             break;  
         /*
             CXNN (random)
         */
         case 0x0C:
             REGISTERS[n2] = rand() & NN();
+            break;
         case 0x0D:
+#ifdef DISPWAIT_Q
+            if (!VBLANK_FLAG) { RPC -= 2; break; }   /* retry this instruction next cycle */
+            VBLANK_FLAG = false;
+#endif
             if(n4 == 0x0) {
             /*
                 DXY0 (sprite vx vy 0)
-                - SuperChip high resolution sprites are 16x16 pixels.
-                - Stored row-wise in 32 bytes (left byte, right byte).
-                - Works in BOTH low-res and high-res modes!
+                - HIGH_RES: 16x16 sprite, 32 bytes (left byte, right byte per row).
+                - LOW_RES:   8x16 sprite, 16 bytes (one byte per row).
             */
                 REGISTERS[RFLAG] = 0;
-                
-                // Use your dynamic macros so it wraps correctly in either mode!
+
                 uint8_t startX = REGISTERS[n2] % SCREEN_WIDTH;
                 uint8_t startY = REGISTERS[n3] % SCREEN_HEIGHT;
-                
-                int offset = 0;
-                for (uint8_t i = 0; i < 16; i++) {
-                    uint8_t y = startY + i;
-                    
-                    if (y >= SCREEN_HEIGHT) {
-                        break; // Stop drawing if it goes off the bottom of the screen
-                    }
-                    
-                    uint8_t row_l = MEMORY[RIDX + offset];           
-                    uint8_t row_r = MEMORY[RIDX + offset + 1];       
-                    uint16_t row = (row_l << 8) | row_r;
 
-                    /* iterate over the 16 bits of the row */
-                    for (uint8_t bit = 0; bit < 16; bit++) {
-                        uint8_t x = startX + bit;
-                        
-                        if (x >= SCREEN_WIDTH) {
-                            break; // Stop drawing if it goes off the right edge
-                        }
-                        
-                        uint8_t pixel = (row >> (15 - bit)) & 0x1;
-                        
+                int sprite_width  = (RES_MODE == LOW_RES_MODE) ? 8 : 16;
+                int bytes_per_row = (RES_MODE == LOW_RES_MODE) ? 1 : 2;
+
+                for (uint8_t i = 0; i < 16; i++) {
+#ifdef CLIPPING_Q
+                    int y = startY + i;
+                    if (y >= SCREEN_HEIGHT) break;
+#else
+                    int y = (startY + i) % SCREEN_HEIGHT;
+#endif
+
+                    uint16_t row;
+                    if (bytes_per_row == 1) {
+                        row = MEMORY[RIDX + i];
+                    } else {
+                        row = ((uint16_t)MEMORY[RIDX + i * 2] << 8) | MEMORY[RIDX + i * 2 + 1];
+                    }
+
+                    /* iterate over the bits of the row */
+                    for (uint8_t bit = 0; bit < sprite_width; bit++) {
+#ifdef CLIPPING_Q
+                        int x = startX + bit;
+                        if (x >= SCREEN_WIDTH) break;
+#else
+                        int x = (startX + bit) % SCREEN_WIDTH;
+#endif
+                        uint8_t pixel = (row >> (sprite_width - 1 - bit)) & 0x1;
+
                         if (pixel == 1) {
                             if (RES_MODE == LOW_RES_MODE) {
                                 if (DISPLAY_LOW_RES[y][x] == 1) REGISTERS[RFLAG] = 1;
@@ -314,14 +346,13 @@ void CPU_CYCLE() {
                             }
                         }
                     }
-                    offset += 2;
                 }
                 RDRAW_FLAG = true;
             } 
             else {
             /*
                 DXYN (display/draw)
-                - draws 8px or 16px (wide) x N (tall) pixel sprite at pos VX, VY
+                - draws 8px (wide) x N (tall) pixel sprite at pos VX, VY
                 with data starting at the address in I, I if not changed
                 X,Y  = registers
                 N    = sprite height, draw sprite
@@ -333,14 +364,22 @@ void CPU_CYCLE() {
 
                 for (uint8_t i = 0; i < n4; i++) {
                     uint8_t row = MEMORY[RIDX + i];           // read from memory
-                    uint8_t y   = startY + i;                 // VY + line offset
-                    
-                    if (y >= SCREEN_HEIGHT) break;
+#ifdef CLIPPING_Q
+                        int y = startY + i;
+                        if (y >= SCREEN_HEIGHT) break;               // everything below is off-screen
+#else
+                        int y = (startY + i) % SCREEN_HEIGHT;
+#endif
 
                     /* iterate over the 8 bits of the row */
                     for (uint8_t bit = 0; bit < 8; bit++) {
-                        uint8_t x = startX + bit;
-                        if (x >= SCREEN_WIDTH) break;
+#ifdef CLIPPING_Q
+                            int x = startX + bit;
+                            if (x >= SCREEN_WIDTH) break;            // rest of this row is off-screen
+#else
+                            int x = (startX + bit) % SCREEN_WIDTH;
+#endif
+
                         uint8_t pixel = (row >> (7 - bit)) & 0x1;
                         if (pixel == 1) {
                             if (RES_MODE == LOW_RES_MODE) {
@@ -357,7 +396,6 @@ void CPU_CYCLE() {
             }
             break;
         case 0x0E:
-            int c = -1;
             uint8_t key = REGISTERS[n2] & 0xF;
             if(CHECK_NN(0x9, 0xE)) {            
             /* 
@@ -467,6 +505,9 @@ void CPU_CYCLE() {
                 for(int i=0; i<=n2; i++) {
                     MEMORY[RIDX+i] = REGISTERS[i];
                 }
+#ifdef MEMINC_Q
+                RIDX += n2 + 1;
+#endif
             } else if (CHECK_NN(0x6, 0x5)) {
             /*
                 FX65
@@ -474,12 +515,15 @@ void CPU_CYCLE() {
                 for(int i=0; i<=n2; i++) {
                     REGISTERS[i] = MEMORY[RIDX+i];
                 }
+#ifdef MEMINC_Q
+                RIDX += n2 + 1;
+#endif
             } else if (CHECK_NN(0x7, 0x5)) {
             /*
                 FX75 (saveflags vx) 
                 - Save v0-vX to flag registers.
             */
-                for(int i=0; i<=n2; i++) {
+                for(int i=0; i<=n2 && i<8; i++) {
                     RPL_FLAG[i] = REGISTERS[i];
                 }
             } else if (CHECK_NN(0x8, 0x5)) {
@@ -487,7 +531,7 @@ void CPU_CYCLE() {
                 FX85 (loadflags vx) 
                 - Restore v0-vX from flag registers.
             */
-                for(int i=0; i<=n2; i++) {
+                for(int i=0; i<=n2 && i<8; i++) {
                     REGISTERS[i] = RPL_FLAG[i];
                 }
             }
