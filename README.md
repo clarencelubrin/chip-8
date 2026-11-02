@@ -16,8 +16,6 @@ This is a CHIP-8 Emulator with SuperChip (Modern) support. It is backwards compa
 
 ## Build
 
-It is required to have CL installed in your Windows machine in order to build from source.
-
 Install the prerequisites and dependencies.
 ```
 make setup
